@@ -1,0 +1,38 @@
+name: Daily Attendance Check
+
+on:
+  schedule:
+    - cron: '30 12 * * *'  # Runs at 6:00 PM IST daily
+  workflow_dispatch:       # Allows manual button click
+
+jobs:
+  check_attendance:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write      # Crucial: Allows the bot to save data.json
+    
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 18
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Run Scraper
+        env:
+          SLCM_STATE: ${{ secrets.SLCM_STATE }}
+          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
+        run: node index.js
+
+      - name: Commit Updated Data
+        run: |
+          git config --global user.name 'SLCM-Bot'
+          git config --global user.email 'bot@noreply.github.com'
+          git add data.json
+          git commit -m "Update attendance records" || exit 0
+          git push
