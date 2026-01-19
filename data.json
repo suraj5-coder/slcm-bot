@@ -1,8 +1,8 @@
 {
   "Internet of Things (Integrated Lab)": {
-    "total": 22,
+    "total": 21,
     "attended": 20,
-    "percentage": 90.91,
+    "percentage": 95.45,
     "percentageText": "90.91%",
     "advice": "😴 Bunkable: **4** classes"
   },
@@ -77,7 +77,7 @@
     "advice": "😴 Bunkable: **5** classes"
   },
   "Total": {
-    "total": 350,
+    "total": 349,
     "attended": 298,
     "percentage": 85.14,
     "percentageText": "85.14%",
