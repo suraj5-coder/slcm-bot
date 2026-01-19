@@ -8,7 +8,7 @@ const { WebhookClient } = require('discord.js');
 
     // 1. CHECK SECRET
     if (!process.env.SLCM_STATE) {
-      throw new Error("❌ SLCM_STATE Secret is missing! Go to GitHub Settings -> Secrets.");
+      throw new Error("❌ SLCM_STATE Secret is missing!");
     }
 
     console.log("🍪 Parsing Cookies...");
@@ -19,20 +19,37 @@ const { WebhookClient } = require('discord.js');
       throw new Error("❌ SLCM_STATE is not valid JSON! Re-export cookies using EditThisCookie.");
     }
 
+    // --- 🛠️ THE FIX: SANITIZE COOKIES 🛠️ ---
+    // Playwright is strict. We must fix "sameSite" values and remove junk fields.
+    cookies = cookies.map(cookie => {
+      // 1. Fix sameSite (EditThisCookie gives "no_restriction", Playwright wants "None")
+      if (cookie.sameSite === 'no_restriction' || cookie.sameSite === 'unspecified') {
+        cookie.sameSite = 'None';
+      }
+      // 2. Remove fields Playwright doesn't like
+      delete cookie.storeId; 
+      delete cookie.id;
+      return cookie;
+    });
+    console.log("✅ Cookies sanitized!");
+    // ----------------------------------------
+
     // 2. LAUNCH BROWSER
     console.log("🖥️ Launching Browser...");
     const browser = await chromium.launch({ headless: true });
     const context = await browser.newContext();
+    
+    // Inject the cleaned cookies
     await context.addCookies(cookies);
 
     // 3. NAVIGATE
     const page = await context.newPage();
     console.log("🔗 Navigating to Reva SLCM...");
-    // USING YOUR EXACT URL FROM SCREENSHOTS
+    
+    // Using the exact URL from your screenshot
     await page.goto('https://reva.edu.in/slcm/student/attendance', { timeout: 60000 });
 
     console.log("👀 Checking for Attendance Table...");
-    // Wait for table to load (Increased timeout to 60s)
     await page.waitForSelector('tbody tr', { timeout: 60000 });
 
     // 4. SCRAPE DATA
@@ -46,7 +63,7 @@ const { WebhookClient } = require('discord.js');
       if (cells.length < 5) continue; 
 
       // COLUMNS BASED ON YOUR IMAGE:
-      // Index 2: Subject (e.g. "Internet of Things")
+      // Index 2: Subject
       // Index 5: Total Classes
       // Index 6: Attended
       // Index 7: Percentage
@@ -96,6 +113,6 @@ const { WebhookClient } = require('discord.js');
     console.error("\n💥 FATAL ERROR 💥");
     console.error(error.message);
     console.error(error.stack);
-    process.exit(1); // Force failure so GitHub notifies you
+    process.exit(1);
   }
 })();
