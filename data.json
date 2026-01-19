@@ -1,83 +1,83 @@
 {
   "Internet of Things (Integrated Lab)": {
-    "total": 21,
+    "total": 22,
     "attended": 20,
-    "percentage": 95.45,
+    "percentage": 90.91,
     "percentageText": "90.91%",
-    "advice": "😴 Bunkable: **4** classes"
+    "advice": "🛡️ Safety Margin: **4** classes"
   },
   "Communicative English": {
     "total": 28,
     "attended": 22,
     "percentage": 78.57,
     "percentageText": "78.57%",
-    "advice": "😴 Bunkable: **1** classes"
+    "advice": "🛡️ Safety Margin: **1** classes"
   },
   "Physics for Computer Science Lab": {
     "total": 28,
     "attended": 26,
     "percentage": 92.86,
     "percentageText": "92.86%",
-    "advice": "😴 Bunkable: **6** classes"
+    "advice": "🛡️ Safety Margin: **6** classes"
   },
   "Introduction to C Programming Lab": {
     "total": 21,
     "attended": 17,
     "percentage": 80.95,
     "percentageText": "80.95%",
-    "advice": "😴 Bunkable: **1** classes"
+    "advice": "🛡️ Safety Margin: **1** classes"
   },
   "Innovation & Entrepreneurship": {
     "total": 41,
     "attended": 35,
     "percentage": 85.37,
     "percentageText": "85.37%",
-    "advice": "😴 Bunkable: **5** classes"
+    "advice": "🛡️ Safety Margin: **5** classes"
   },
   "Internet of Things": {
     "total": 14,
     "attended": 12,
     "percentage": 85.71,
     "percentageText": "85.71%",
-    "advice": "😴 Bunkable: **2** classes"
+    "advice": "🛡️ Safety Margin: **2** classes"
   },
   "Introduction to C Programming": {
     "total": 41,
     "attended": 37,
     "percentage": 90.24,
     "percentageText": "90.24%",
-    "advice": "😴 Bunkable: **8** classes"
+    "advice": "🛡️ Safety Margin: **8** classes"
   },
   "Business Analysis and Software Design": {
     "total": 26,
     "attended": 22,
     "percentage": 84.62,
     "percentageText": "84.62%",
-    "advice": "😴 Bunkable: **3** classes"
+    "advice": "🛡️ Safety Margin: **3** classes"
   },
   "Fundamentals of Mechanical Engineering": {
     "total": 40,
     "attended": 33,
     "percentage": 82.5,
     "percentageText": "82.5%",
-    "advice": "😴 Bunkable: **4** classes"
+    "advice": "🛡️ Safety Margin: **4** classes"
   },
   "Physics for Computer Science": {
     "total": 37,
     "attended": 31,
     "percentage": 83.78,
     "percentageText": "83.78%",
-    "advice": "😴 Bunkable: **4** classes"
+    "advice": "🛡️ Safety Margin: **4** classes"
   },
   "Multivariable Calculus and Linear Algebra": {
     "total": 52,
     "attended": 43,
     "percentage": 82.69,
     "percentageText": "82.69%",
-    "advice": "😴 Bunkable: **5** classes"
+    "advice": "🛡️ Safety Margin: **5** classes"
   },
   "Total": {
-    "total": 349,
+    "total": 350,
     "attended": 298,
     "percentage": 85.14,
     "percentageText": "85.14%",
