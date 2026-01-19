@@ -2,9 +2,15 @@ const { chromium } = require('playwright');
 const fs = require('fs');
 const { WebhookClient } = require('discord.js');
 
+// --- ⚙️ CONFIGURATION ZONE ⚙️ ---
+// Set to TRUE for "Bunkable/Must Attend" slang.
+// Set to FALSE for "Professional/Safe Margin" language (Safe for LinkedIn).
+const STUDENT_MODE = true; 
+// ---------------------------------
+
 (async () => {
   try {
-    console.log("🚀 Starting SLCM Bot (Total Fix Mode)...");
+    console.log(`🚀 Starting SLCM Bot (Mode: ${STUDENT_MODE ? 'Student' : 'Professional'})...`);
 
     if (!process.env.SLCM_STATE) throw new Error("❌ SLCM_STATE Secret is missing!");
 
@@ -28,76 +34,62 @@ const { WebhookClient } = require('discord.js');
     await page.click(selector);
     await page.waitForSelector('text=TOTAL CLASSES COMPLETED', { timeout: 30000 });
 
-    // 3. SCRAPE (New Logic: Read from Right-to-Left)
-    // We grab ALL rows, including those in <thead>, <tbody>, <tfoot> just to be safe
+    // 3. SCRAPE (Right-to-Left Strategy)
     const rows = await page.$$('tr'); 
     let currentData = {};
     let overallStats = null;
 
     for (const row of rows) {
       const cells = await row.$$('td');
-      // Relaxed check: We only need the last 3 cells (Total, Attended, %)
       if (cells.length < 3) continue; 
       
       const count = cells.length;
       const rowText = await row.innerText();
 
-      // --- SMART DATA EXTRACTION ---
-      // We read from the END of the row because the "Total" row might have merged cells at the start.
-      // Last Cell = Percentage
-      // 2nd Last = Attended
-      // 3rd Last = Total Classes
-      
       const percentageText = await cells[count - 1].innerText();
       const attendedText = await cells[count - 2].innerText();
       const totalText = await cells[count - 3].innerText();
 
-      // Clean the data (remove newlines, spaces)
       const total = parseInt(totalText.trim());
       const attended = parseInt(attendedText.trim());
       const percentage = parseFloat(percentageText.trim());
 
-      // Valid number check (Skips header rows like "Subject", "Professor")
       if (isNaN(total) || isNaN(attended) || isNaN(percentage)) continue;
 
-      // Identify Subject Name
       let subject = "";
-      
-      // If the row contains "Total", treat it as the Overall Row
       if (rowText.includes("Total") && !rowText.includes("TOTAL CLASSES")) {
         subject = "Total";
       } else {
-        // For normal rows, Subject is usually in the 3rd column (Index 2)
-        // Check bounds just in case
-        if (count >= 3) {
-            subject = await cells[2].innerText();
-        } else {
-            continue; // Skip weird rows
-        }
+        if (count >= 3) subject = await cells[2].innerText();
+        else continue;
       }
 
-      // --- BUNK CALCULATOR ---
+      // --- 🧮 CALCULATOR LOGIC (Runs in both modes) 🧮 ---
       let advice = "";
       if (subject !== 'Total') {
         if (percentage >= 75) {
-           const canBunk = Math.floor((attended - 0.75 * total) / 0.75);
-           if (canBunk > 0) advice = `😴 Bunkable: **${canBunk}** classes`;
-           else advice = `🛡️ On the edge! Don't miss.`;
+           const buffer = Math.floor((attended - 0.75 * total) / 0.75);
+           if (buffer > 0) {
+               advice = STUDENT_MODE 
+                 ? `😴 Bunkable: **${buffer}** classes`
+                 : `🛡️ Safety Margin: **${buffer}** classes`;
+           } else {
+               advice = STUDENT_MODE 
+                 ? `🛡️ On the edge! Don't miss.`
+                 : `⚠️ Minimal Margin. Maintain attendance.`;
+           }
         } else {
-           const need = Math.ceil((0.75 * total - attended) / 0.25);
-           advice = `🚑 **MUST ATTEND: ${need}** next classes!`;
+           const deficit = Math.ceil((0.75 * total - attended) / 0.25);
+           advice = STUDENT_MODE 
+             ? `🚑 **MUST ATTEND: ${deficit}** next classes!`
+             : `📉 Deficit: Needs **${deficit}** classes to recover.`;
         }
       }
-      // -----------------------
+      // ----------------------------------------------------
 
       const stats = { total, attended, percentage, percentageText, advice };
-      
-      if (subject === 'Total') {
-        overallStats = stats;
-        console.log(`✅ Found Overall Total: ${percentageText}`);
-      } else {
-        currentData[subject] = stats;
-      }
+      if (subject === 'Total') overallStats = stats;
+      else currentData[subject] = stats;
     }
 
     // 4. COMPARE & NOTIFY
@@ -109,20 +101,22 @@ const { WebhookClient } = require('discord.js');
     let updates = [];
     let warnings = [];
 
-    // Detect Changes
     for (const [subject, stats] of Object.entries(currentData)) {
       const old = oldData[subject];
+      
+      // Update Detection
       if (old && stats.total > old.total) {
         const statusIcon = stats.attended > old.attended ? "✅" : "❌";
         const statusText = stats.attended > old.attended ? "Present" : "ABSENT";
         updates.push(`${statusIcon} **${subject}**\n${statusText} (${stats.percentageText}) [${stats.attended}/${stats.total}]\n${stats.advice}`);
       }
-      // Add to warnings if low
+
+      // Warning Thresholds
       if (stats.percentage < 75.0) warnings.push(`🛑 **${subject}**: ${stats.percentageText} (${stats.advice})`);
       else if (stats.percentage < 78.0) warnings.push(`⚠️ **${subject}**: ${stats.percentageText} (${stats.advice})`);
     }
 
-    // Save Data (Include Overall Stats in the file too!)
+    // Save Data
     if (overallStats) currentData['Total'] = overallStats;
     fs.writeFileSync('data.json', JSON.stringify(currentData, null, 2));
 
@@ -133,7 +127,6 @@ const { WebhookClient } = require('discord.js');
       finalMessage += `**📢 SLCM Update:**\n\n${updates.join('\n\n')}\n\n`;
     } 
 
-    // Always show overall stats if updates happened OR if critical
     if (overallStats && (updates.length > 0 || overallStats.percentage < 75)) {
         const icon = overallStats.percentage < 75 ? "🛑" : "📊";
         finalMessage += `${icon} **Overall Percentage: ${overallStats.percentageText}**\n`;
