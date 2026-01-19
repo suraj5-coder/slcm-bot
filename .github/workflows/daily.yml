@@ -37,7 +37,7 @@ jobs:
         run: |
           git config --global user.name 'SLCM-Bot'
           git config --global user.email 'bot@noreply.github.com'
-          git add data.json
+          git add data.json history.csv  # <--- CHANGED THIS LINE
           git commit -m "Update attendance records" || exit 0
           git push
 
