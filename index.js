@@ -4,55 +4,54 @@ const { WebhookClient } = require('discord.js');
 
 (async () => {
   try {
-    console.log("🚀 Starting SLCM Bot...");
+    console.log("🚀 Starting SLCM Bot (SPA Mode)...");
 
-    // 1. CHECK SECRET
-    if (!process.env.SLCM_STATE) {
-      throw new Error("❌ SLCM_STATE Secret is missing!");
-    }
+    if (!process.env.SLCM_STATE) throw new Error("❌ SLCM_STATE Secret is missing!");
 
+    // 1. COOKIE SETUP
     console.log("🍪 Parsing Cookies...");
-    let cookies;
-    try {
-      cookies = JSON.parse(process.env.SLCM_STATE);
-    } catch (e) {
-      throw new Error("❌ SLCM_STATE is not valid JSON! Re-export cookies using EditThisCookie.");
-    }
-
-    // --- 🛠️ THE FIX: SANITIZE COOKIES 🛠️ ---
-    // Playwright is strict. We must fix "sameSite" values and remove junk fields.
-    cookies = cookies.map(cookie => {
-      // 1. Fix sameSite (EditThisCookie gives "no_restriction", Playwright wants "None")
-      if (cookie.sameSite === 'no_restriction' || cookie.sameSite === 'unspecified') {
-        cookie.sameSite = 'None';
-      }
-      // 2. Remove fields Playwright doesn't like
-      delete cookie.storeId; 
-      delete cookie.id;
-      return cookie;
+    let cookies = JSON.parse(process.env.SLCM_STATE);
+    cookies = cookies.map(c => {
+      if (c.sameSite === 'no_restriction' || c.sameSite === 'unspecified') c.sameSite = 'None';
+      delete c.storeId; delete c.id;
+      return c;
     });
-    console.log("✅ Cookies sanitized!");
-    // ----------------------------------------
 
-    // 2. LAUNCH BROWSER
     console.log("🖥️ Launching Browser...");
     const browser = await chromium.launch({ headless: true });
     const context = await browser.newContext();
-    
-    // Inject the cleaned cookies
     await context.addCookies(cookies);
-
-    // 3. NAVIGATE
     const page = await context.newPage();
-    console.log("🔗 Navigating to Reva SLCM...");
+
+    // 2. NAVIGATE TO HOME
+    console.log("🔗 Navigating to Dashboard...");
+    // We go to the main portal link you gave
+    await page.goto('https://reva-university.my.site.com/StudentPortal/s/', { timeout: 60000 });
     
-    // Using the exact URL from your screenshot
-    await page.goto('https://reva.edu.in/slcm/student/attendance', { timeout: 60000 });
+    console.log("📍 Landed at Home Page. Looking for Attendance button...");
 
-    console.log("👀 Checking for Attendance Table...");
-    await page.waitForSelector('tbody tr', { timeout: 60000 });
+    // 3. THE CLICK (Using the selector from your screenshot)
+    try {
+        // We wait for the specific div with title="Attendance"
+        const selector = 'div[title="Attendance"]';
+        await page.waitForSelector(selector, { timeout: 30000 });
+        
+        console.log("👆 Found Attendance icon. Clicking...");
+        await page.click(selector);
 
-    // 4. SCRAPE DATA
+    } catch (e) {
+        console.error("❌ Could not find the Attendance button!");
+        console.log("Debugging: taking screenshot...");
+        await page.screenshot({ path: 'debug-error.png' });
+        throw e;
+    }
+
+    // 4. WAIT FOR TABLE
+    console.log("⏳ Waiting for Table to load...");
+    // Wait for the "TOTAL CLASSES COMPLETED" header to appear
+    await page.waitForSelector('text=TOTAL CLASSES COMPLETED', { timeout: 30000 });
+
+    // 5. SCRAPE DATA
     console.log("📝 Reading Data...");
     const rows = await page.$$('tbody tr');
     let currentData = {};
@@ -61,12 +60,8 @@ const { WebhookClient } = require('discord.js');
     for (const row of rows) {
       const cells = await row.$$('td');
       if (cells.length < 5) continue; 
-
-      // COLUMNS BASED ON YOUR IMAGE:
-      // Index 2: Subject
-      // Index 5: Total Classes
-      // Index 6: Attended
-      // Index 7: Percentage
+      
+      // Scrape data based on column index
       const subject = await cells[2].innerText();
       const total = parseInt(await cells[5].innerText());
       const attended = parseInt(await cells[6].innerText());
@@ -77,7 +72,7 @@ const { WebhookClient } = require('discord.js');
 
     console.log(`✅ Scraped ${Object.keys(currentData).length} subjects.`);
 
-    // 5. COMPARE & SAVE
+    // 6. SAVE & ALERT
     let oldData = {};
     if (fs.existsSync('data.json')) {
       oldData = JSON.parse(fs.readFileSync('data.json', 'utf8'));
@@ -85,6 +80,8 @@ const { WebhookClient } = require('discord.js');
 
     for (const [subject, stats] of Object.entries(currentData)) {
       const old = oldData[subject];
+      
+      // Logic: Only alert if "Total Classes" increased
       if (old && stats.total > old.total) {
         if (stats.attended > old.attended) {
           updates.push(`✅ **${subject}**: Present (${stats.percentage})`);
@@ -94,25 +91,24 @@ const { WebhookClient } = require('discord.js');
       }
     }
 
-    // Save Data
+    // Save current data for tomorrow
     fs.writeFileSync('data.json', JSON.stringify(currentData, null, 2));
 
-    // Send Alert
+    // Send Discord Message
     if (updates.length > 0 && process.env.DISCORD_WEBHOOK) {
       const webhook = new WebhookClient({ url: process.env.DISCORD_WEBHOOK });
-      await webhook.send(`**📢 SLCM Attendance Update:**\n\n${updates.join('\n')}`);
-      console.log("📨 Discord Notification Sent!");
+      await webhook.send(`**📢 SLCM Update:**\n\n${updates.join('\n')}`);
+      console.log("📨 Notification Sent!");
     } else {
-      console.log("👍 No changes detected.");
+      console.log("👍 No attendance changes detected.");
     }
 
     await browser.close();
-    console.log("🎉 Done!");
+    console.log("🎉 Success!");
 
   } catch (error) {
     console.error("\n💥 FATAL ERROR 💥");
     console.error(error.message);
-    console.error(error.stack);
     process.exit(1);
   }
 })();
