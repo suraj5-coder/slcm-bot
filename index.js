@@ -2,19 +2,17 @@ const { chromium } = require('playwright');
 const fs = require('fs');
 const { WebhookClient } = require('discord.js');
 
-// --- ⚙️ CONFIGURATION ZONE ⚙️ ---
-// Set to TRUE for "Bunkable/Must Attend" slang.
-// Set to FALSE for "Professional/Safe Margin" language (Safe for LinkedIn).
-const STUDENT_MODE = false; 
-// ---------------------------------
+// --- ⚙️ CONFIGURATION ⚙️ ---
+const STUDENT_MODE = false; // Set FALSE for "Professional" (LinkedIn Safe)
+// ----------------------------
 
 (async () => {
   try {
-    console.log(`🚀 Starting SLCM Bot (Mode: ${STUDENT_MODE ? 'Student' : 'Professional'})...`);
+    console.log(`🚀 Starting SLCM Bot (Data Pipeline Mode)...`);
 
     if (!process.env.SLCM_STATE) throw new Error("❌ SLCM_STATE Secret is missing!");
 
-    // 1. COOKIE SETUP
+    // 1. COOKIES
     let cookies = JSON.parse(process.env.SLCM_STATE);
     cookies = cookies.map(c => {
       if (c.sameSite === 'no_restriction' || c.sameSite === 'unspecified') c.sameSite = 'None';
@@ -34,7 +32,7 @@ const STUDENT_MODE = false;
     await page.click(selector);
     await page.waitForSelector('text=TOTAL CLASSES COMPLETED', { timeout: 30000 });
 
-    // 3. SCRAPE (Right-to-Left Strategy)
+    // 3. SCRAPE
     const rows = await page.$$('tr'); 
     let currentData = {};
     let overallStats = null;
@@ -45,7 +43,6 @@ const STUDENT_MODE = false;
       
       const count = cells.length;
       const rowText = await row.innerText();
-
       const percentageText = await cells[count - 1].innerText();
       const attendedText = await cells[count - 2].innerText();
       const totalText = await cells[count - 3].innerText();
@@ -57,42 +54,44 @@ const STUDENT_MODE = false;
       if (isNaN(total) || isNaN(attended) || isNaN(percentage)) continue;
 
       let subject = "";
-      if (rowText.includes("Total") && !rowText.includes("TOTAL CLASSES")) {
-        subject = "Total";
-      } else {
-        if (count >= 3) subject = await cells[2].innerText();
-        else continue;
-      }
+      if (rowText.includes("Total") && !rowText.includes("TOTAL CLASSES")) subject = "Total";
+      else if (count >= 3) subject = await cells[2].innerText();
+      else continue;
 
-      // --- 🧮 CALCULATOR LOGIC (Runs in both modes) 🧮 ---
+      // --- CALCULATOR ---
       let advice = "";
       if (subject !== 'Total') {
         if (percentage >= 75) {
            const buffer = Math.floor((attended - 0.75 * total) / 0.75);
-           if (buffer > 0) {
-               advice = STUDENT_MODE 
-                 ? `😴 Bunkable: **${buffer}** classes`
-                 : `🛡️ Safety Margin: **${buffer}** classes`;
-           } else {
-               advice = STUDENT_MODE 
-                 ? `🛡️ On the edge! Don't miss.`
-                 : `⚠️ Minimal Margin. Maintain attendance.`;
-           }
+           advice = STUDENT_MODE 
+             ? `😴 Bunkable: **${buffer}** classes`
+             : `🛡️ Safety Margin: **${buffer}** classes`;
         } else {
            const deficit = Math.ceil((0.75 * total - attended) / 0.25);
            advice = STUDENT_MODE 
              ? `🚑 **MUST ATTEND: ${deficit}** next classes!`
-             : `📉 Deficit: Needs **${deficit}** classes to recover.`;
+             : `📉 Deficit: Needs **${deficit}** classes.`;
         }
       }
-      // ----------------------------------------------------
 
       const stats = { total, attended, percentage, percentageText, advice };
       if (subject === 'Total') overallStats = stats;
       else currentData[subject] = stats;
     }
 
-    // 4. COMPARE & NOTIFY
+    // --- 4. DATA PIPELINE (The New Feature) ---
+    // We append a new line to 'history.csv' with today's date
+    const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+    let csvLine = `${today},Overall,${overallStats ? overallStats.percentage : 0}\n`;
+    
+    // Check if file exists to add headers
+    if (!fs.existsSync('history.csv')) {
+        fs.writeFileSync('history.csv', 'Date,Subject,Percentage\n');
+    }
+    fs.appendFileSync('history.csv', csvLine);
+    console.log("📂 Data archived to history.csv");
+
+    // 5. COMPARE & NOTIFY
     let oldData = {};
     if (fs.existsSync('data.json')) {
       oldData = JSON.parse(fs.readFileSync('data.json', 'utf8'));
@@ -104,19 +103,17 @@ const STUDENT_MODE = false;
     for (const [subject, stats] of Object.entries(currentData)) {
       const old = oldData[subject];
       
-      // Update Detection
       if (old && stats.total > old.total) {
         const statusIcon = stats.attended > old.attended ? "✅" : "❌";
         const statusText = stats.attended > old.attended ? "Present" : "ABSENT";
         updates.push(`${statusIcon} **${subject}**\n${statusText} (${stats.percentageText}) [${stats.attended}/${stats.total}]\n${stats.advice}`);
       }
 
-      // Warning Thresholds
       if (stats.percentage < 75.0) warnings.push(`🛑 **${subject}**: ${stats.percentageText} (${stats.advice})`);
       else if (stats.percentage < 78.0) warnings.push(`⚠️ **${subject}**: ${stats.percentageText} (${stats.advice})`);
     }
 
-    // Save Data
+    // Save State
     if (overallStats) currentData['Total'] = overallStats;
     fs.writeFileSync('data.json', JSON.stringify(currentData, null, 2));
 
@@ -125,16 +122,10 @@ const STUDENT_MODE = false;
     let finalMessage = "";
     if (updates.length > 0) {
       finalMessage += `**📢 SLCM Update:**\n\n${updates.join('\n\n')}\n\n`;
+      if (overallStats) finalMessage += `📊 **Overall: ${overallStats.percentageText}**`;
     } 
 
-    if (overallStats && (updates.length > 0 || overallStats.percentage < 75)) {
-        const icon = overallStats.percentage < 75 ? "🛑" : "📊";
-        finalMessage += `${icon} **Overall Percentage: ${overallStats.percentageText}**\n`;
-    }
-
-    if (warnings.length > 0) {
-        finalMessage += `\n**⚠️ ATTENDANCE ALERTS:**\n${warnings.join('\n')}`;
-    }
+    if (warnings.length > 0) finalMessage += `\n\n**⚠️ ALERTS:**\n${warnings.join('\n')}`;
 
     if (finalMessage) await webhook.send(finalMessage);
 
@@ -144,4 +135,3 @@ const STUDENT_MODE = false;
     process.exit(1);
   }
 })();
-
