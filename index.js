@@ -4,11 +4,11 @@ const { WebhookClient } = require('discord.js');
 
 (async () => {
   try {
-    console.log("🚀 Starting SLCM Bot (SPA Mode)...");
+    console.log("🚀 Starting SLCM Bot (Custom Alerts Mode)...");
 
     if (!process.env.SLCM_STATE) throw new Error("❌ SLCM_STATE Secret is missing!");
 
-    // 1. COOKIE SETUP
+    // --- 1. COOKIE SETUP ---
     console.log("🍪 Parsing Cookies...");
     let cookies = JSON.parse(process.env.SLCM_STATE);
     cookies = cookies.map(c => {
@@ -23,91 +23,128 @@ const { WebhookClient } = require('discord.js');
     await context.addCookies(cookies);
     const page = await context.newPage();
 
-    // 2. NAVIGATE TO HOME
+    // --- 2. NAVIGATE & CLICK ---
     console.log("🔗 Navigating to Dashboard...");
-    // We go to the main portal link you gave
     await page.goto('https://reva-university.my.site.com/StudentPortal/s/', { timeout: 60000 });
     
-    console.log("📍 Landed at Home Page. Looking for Attendance button...");
+    console.log("📍 Looking for Attendance button...");
+    const selector = 'div[title="Attendance"]';
+    await page.waitForSelector(selector, { timeout: 30000 });
+    await page.click(selector);
 
-    // 3. THE CLICK (Using the selector from your screenshot)
-    try {
-        // We wait for the specific div with title="Attendance"
-        const selector = 'div[title="Attendance"]';
-        await page.waitForSelector(selector, { timeout: 30000 });
-        
-        console.log("👆 Found Attendance icon. Clicking...");
-        await page.click(selector);
-
-    } catch (e) {
-        console.error("❌ Could not find the Attendance button!");
-        console.log("Debugging: taking screenshot...");
-        await page.screenshot({ path: 'debug-error.png' });
-        throw e;
-    }
-
-    // 4. WAIT FOR TABLE
-    console.log("⏳ Waiting for Table to load...");
-    // Wait for the "TOTAL CLASSES COMPLETED" header to appear
+    console.log("⏳ Waiting for Table...");
     await page.waitForSelector('text=TOTAL CLASSES COMPLETED', { timeout: 30000 });
 
-    // 5. SCRAPE DATA
+    // --- 3. SCRAPE DATA ---
     console.log("📝 Reading Data...");
     const rows = await page.$$('tbody tr');
     let currentData = {};
-    let updates = [];
+    let overallStats = null;
 
     for (const row of rows) {
       const cells = await row.$$('td');
       if (cells.length < 5) continue; 
       
-      // Scrape data based on column index
-      const subject = await cells[2].innerText();
+      let subject = await cells[2].innerText();
+      // Check for "Total" row (sometimes in first column)
+      const firstCell = await cells[0].innerText();
+      if (firstCell.trim() === 'Total' || subject.trim() === 'Total') {
+        subject = 'Total';
+      }
+
       const total = parseInt(await cells[5].innerText());
       const attended = parseInt(await cells[6].innerText());
-      const percentage = await cells[7].innerText();
+      const percentageText = await cells[7].innerText();
+      const percentage = parseFloat(percentageText); 
 
-      currentData[subject] = { total, attended, percentage };
+      const stats = { total, attended, percentage, percentageText };
+
+      if (subject === 'Total') {
+        overallStats = stats;
+      } else {
+        currentData[subject] = stats;
+      }
     }
 
-    console.log(`✅ Scraped ${Object.keys(currentData).length} subjects.`);
-
-    // 6. SAVE & ALERT
+    // --- 4. ANALYZE & ALERT ---
     let oldData = {};
     if (fs.existsSync('data.json')) {
       oldData = JSON.parse(fs.readFileSync('data.json', 'utf8'));
     }
 
+    let updates = [];
+    let warnings = [];
+
+    // Check individual subjects
     for (const [subject, stats] of Object.entries(currentData)) {
       const old = oldData[subject];
       
-      // Logic: Only alert if "Total Classes" increased
+      // A. Check for Daily Changes
       if (old && stats.total > old.total) {
+        const ratio = `[${stats.attended}/${stats.total}]`;
+        
         if (stats.attended > old.attended) {
-          updates.push(`✅ **${subject}**: Present (${stats.percentage})`);
+          updates.push(`✅ **${subject}**\n   Present! (${stats.percentageText}) ${ratio}`);
         } else {
-          updates.push(`❌ **${subject}**: ABSENT (${stats.percentage})`);
+          updates.push(`❌ **${subject}**\n   ABSENT! (${stats.percentageText}) ${ratio}`);
         }
+      }
+
+      // B. Check for Low Attendance Thresholds
+      if (stats.percentage < 75.0) {
+        // STOP SIGN for < 75%
+        warnings.push(`🛑 **${subject}** is CRITICAL: **${stats.percentageText}**`);
+      } else if (stats.percentage < 78.0) {
+        // WARNING SYMBOL for 75% - 77.9%
+        warnings.push(`⚠️ **${subject}** is near limit: **${stats.percentageText}**`);
       }
     }
 
-    // Save current data for tomorrow
-    fs.writeFileSync('data.json', JSON.stringify(currentData, null, 2));
-
-    // Send Discord Message
-    if (updates.length > 0 && process.env.DISCORD_WEBHOOK) {
-      const webhook = new WebhookClient({ url: process.env.DISCORD_WEBHOOK });
-      await webhook.send(`**📢 SLCM Update:**\n\n${updates.join('\n')}`);
-      console.log("📨 Notification Sent!");
-    } else {
-      console.log("👍 No attendance changes detected.");
+    // Check Overall Total
+    if (overallStats) {
+        if (overallStats.percentage < 75.0) {
+            warnings.unshift(`🛑 **CRITICAL: OVERALL ATTENDANCE IS ${overallStats.percentageText}!**`);
+        } else if (overallStats.percentage < 78.0) {
+            warnings.unshift(`⚠️ **Warning: Overall Attendance is ${overallStats.percentageText}**`);
+        }
     }
 
+    // --- 5. SAVE & NOTIFY ---
+    fs.writeFileSync('data.json', JSON.stringify(currentData, null, 2));
+
+    const webhook = new WebhookClient({ url: process.env.DISCORD_WEBHOOK });
+
+    // Construct the final message
+    let finalMessage = "";
+
+    // Add Updates first
+    if (updates.length > 0) {
+      finalMessage += `**📢 Daily SLCM Update:**\n\n${updates.join('\n\n')}\n\n`;
+      if (overallStats) {
+        finalMessage += `📊 **Overall Percentage:** ${overallStats.percentageText}\n`;
+      }
+    } 
+
+    // Add Warnings if any exist (Send these even if no attendance changed today?)
+    // Let's attach them if we have updates, OR if it's Sunday. 
+    // To be safe, let's always append them if they exist so you never miss it.
+    if (warnings.length > 0) {
+        finalMessage += `\n**⚠️ ATTENDANCE ALERTS:**\n${warnings.join('\n')}`;
+    }
+
+    // Only send if there is something to say
+    if (finalMessage.length > 0 && (updates.length > 0 || warnings.length > 0)) {
+        await webhook.send(finalMessage);
+        console.log("📨 Notification Sent!");
+    } else {
+        console.log("👍 No changes and no warnings.");
+    }
+
+    console.log("🎉 Done!");
     await browser.close();
-    console.log("🎉 Success!");
 
   } catch (error) {
-    console.error("\n💥 FATAL ERROR 💥");
+    console.error("💥 FATAL ERROR 💥");
     console.error(error.message);
     process.exit(1);
   }
