@@ -5,7 +5,7 @@ const { WebhookClient } = require('discord.js');
 // --- ⚙️ CONFIGURATION ZONE ⚙️ ---
 // Set to TRUE for "Bunkable/Must Attend" slang.
 // Set to FALSE for "Professional/Safe Margin" language (Safe for LinkedIn).
-const STUDENT_MODE = true; 
+const STUDENT_MODE = false; 
 // ---------------------------------
 
 (async () => {
@@ -144,3 +144,4 @@ const STUDENT_MODE = true;
     process.exit(1);
   }
 })();
+
