@@ -1,13 +1,13 @@
 {
   "Internet of Things (Integrated Lab)": {
-    "total": 22,
+    "total": 21,
     "attended": 20,
-    "percentage": "90.91%"
+    "percentage": "95.23%"
   },
   "Communicative English": {
-    "total": 28,
-    "attended": 22,
-    "percentage": "78.57%"
+    "total": 27,
+    "attended": 21,
+    "percentage": "77.77%"
   },
   "Physics for Computer Science Lab": {
     "total": 28,
@@ -55,8 +55,8 @@
     "percentage": "82.69%"
   },
   "": {
-    "total": 350,
-    "attended": 298,
+    "total": 348,
+    "attended": 297,
     "percentage": "85.14%"
   }
 }
