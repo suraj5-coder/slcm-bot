@@ -1,16 +1,16 @@
 name: Daily Attendance Check
 
 on:
-  schedule:
-    - cron: '0 2 * * *'   # 7:30 AM IST
-    - cron: '30 10 * * *' # 4:00 PM IST
-  workflow_dispatch:      # Allows manual button
+  # schedule:              <-- COMMENTED OUT (Paused)
+  #   - cron: '0 2 * * *'
+  #   - cron: '30 10 * * *'
+  workflow_dispatch:       # <-- KEPT ACTIVE (So you can still click "Run" button manually)
 
 jobs:
   check_attendance:
     runs-on: ubuntu-latest
     permissions:
-      contents: write      # Crucial: Allows the bot to save data.json
+      contents: write
     
     steps:
       - name: Checkout Code
@@ -23,7 +23,7 @@ jobs:
 
       - name: Install Dependencies
         run: npm install
-      
+
       - name: Install Playwright Browsers
         run: npx playwright install --with-deps
 
@@ -37,9 +37,6 @@ jobs:
         run: |
           git config --global user.name 'SLCM-Bot'
           git config --global user.email 'bot@noreply.github.com'
-          git add data.json history.csv  # <--- CHANGED THIS LINE
+          git add data.json history.csv
           git commit -m "Update attendance records" || exit 0
           git push
-
-
-
