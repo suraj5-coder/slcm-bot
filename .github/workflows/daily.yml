@@ -2,8 +2,9 @@ name: Daily Attendance Check
 
 on:
   schedule:
-    - cron: '30 12 * * *'  # Runs at 6:00 PM IST daily
-  workflow_dispatch:       # Allows manual button click
+    - cron: '0 2 * * *'   # 7:30 AM IST
+    - cron: '30 10 * * *' # 4:00 PM IST
+  workflow_dispatch:      # Allows manual button
 
 jobs:
   check_attendance:
@@ -39,5 +40,6 @@ jobs:
           git add data.json
           git commit -m "Update attendance records" || exit 0
           git push
+
 
 
