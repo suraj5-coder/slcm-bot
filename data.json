@@ -56,22 +56,22 @@
     "advice": "🛡️ Safety Margin: **0** classes"
   },
   "Electronics and Digital Logic Lab": {
-    "total": 6,
-    "attended": 6,
+    "total": 5,
+    "attended": 5,
     "percentage": 100,
     "percentageText": "100%",
     "advice": "🛡️ Safety Margin: **2** classes"
   },
   "Python for Data Science Lab": {
-    "total": 4,
-    "attended": 4,
+    "total": 3,
+    "attended": 3,
     "percentage": 100,
     "percentageText": "100%",
     "advice": "🛡️ Safety Margin: **1** classes"
   },
   "Total": {
-    "total": 59,
-    "attended": 57,
+    "total": 55,
+    "attended": 55,
     "percentage": 96.61,
     "percentageText": "96.61%",
     "advice": ""
