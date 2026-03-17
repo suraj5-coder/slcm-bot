@@ -8,15 +8,23 @@ const STUDENT_MODE = false; // Set FALSE for "Professional" (LinkedIn Safe)
 
 (async () => {
   try {
-    console.log(`🚀 Starting SLCM Bot (Semester Change Fix Mode)...`);
+    console.log(`🚀 Starting SLCM Bot (Semester Fix + Bulletproof Cookies)...`);
 
     if (!process.env.SLCM_STATE) throw new Error("❌ SLCM_STATE Secret is missing!");
 
-    // 1. COOKIES
+    // --- 1. BULLETPROOF COOKIE SANITIZER ---
     let cookies = JSON.parse(process.env.SLCM_STATE);
     cookies = cookies.map(c => {
-      if (c.sameSite === 'no_restriction' || c.sameSite === 'unspecified') c.sameSite = 'None';
-      delete c.storeId; delete c.id;
+      // Playwright STRICTLY requires one of these exact strings (case-sensitive)
+      const validSameSite = ['Strict', 'Lax', 'None'];
+      
+      // If the cookie has a weird sameSite value, delete it so Playwright uses the default
+      if (!validSameSite.includes(c.sameSite)) {
+        delete c.sameSite;
+      }
+      
+      delete c.storeId; 
+      delete c.id;
       return c;
     });
 
@@ -27,14 +35,10 @@ const STUDENT_MODE = false; // Set FALSE for "Professional" (LinkedIn Safe)
 
     // 2. NAVIGATE & DEBUG
     console.log("🔗 Navigating to Dashboard...");
-    // You may need to verify this link if it differs from the last semester
     await page.goto('https://reva-university.my.site.com/StudentPortal/s/', { timeout: 60000 });
     
-    // --- 🕵️ DEBUG MODE 🕵️ ---
-    // This tells us if your cookies are active. If Title is "Login", refresh cookies.
     console.log(`📍 I am currently at: ${page.url()}`);
     console.log(`📑 Page Title is: "${await page.title()}"`);
-    // -------------------------
 
     console.log("📍 Looking for Attendance button...");
     const selector = 'div[title="Attendance"]';
@@ -57,15 +61,12 @@ const STUDENT_MODE = false; // Set FALSE for "Professional" (LinkedIn Safe)
       const attendedText = await cells[count - 2].innerText();
       const totalText = await cells[count - 3].innerText();
 
-      // CLEAN THE DATA (remove newlines, spaces)
       const total = parseInt(totalText.trim());
       const attended = parseInt(attendedText.trim());
       const percentage = parseFloat(percentageText.trim());
 
-      // Valid number check (Skips header rows like "Subject", "Professor")
       if (isNaN(total) || isNaN(attended) || isNaN(percentage)) continue;
 
-      // Identify Subject Name
       let subject = "";
       if (rowText.includes("Total") && !rowText.includes("TOTAL CLASSES")) subject = "Total";
       else if (count >= 3) subject = await cells[2].innerText();
@@ -74,14 +75,11 @@ const STUDENT_MODE = false; // Set FALSE for "Professional" (LinkedIn Safe)
       let advice = "";
       let stats;
 
-      // --- 🚑 FIXED: Handle Subjects with 0 Classes ---
-      // This directly fixes the 'NaN' issue from your 2nd image.
+      // --- Handle Subjects with 0 Classes (New Semester Fix) ---
       if (total === 0) {
         advice = "Waiting for first class...";
-        // We set default values so the comparison logic doesn't crash later
         stats = { total: 0, attended: 0, percentage: 0, percentageText: '0%', advice };
       } else {
-        // --- CALCULATOR LOGIC (Runs only if Total > 0) ---
         if (subject !== 'Total') {
           if (percentage >= 75) {
              const buffer = Math.floor((attended - 0.75 * total) / 0.75);
@@ -102,8 +100,7 @@ const STUDENT_MODE = false; // Set FALSE for "Professional" (LinkedIn Safe)
       else currentData[subject] = stats;
     }
 
-    // --- 4. DATA PIPELINE ---
-    // Skip history logging if overallStats is missing (means page didn't load right)
+    // 4. DATA PIPELINE
     if (overallStats) {
         const today = new Date().toISOString().split('T')[0];
         let csvLine = `${today},Overall,${overallStats.percentage}\n`;
@@ -122,7 +119,6 @@ const STUDENT_MODE = false; // Set FALSE for "Professional" (LinkedIn Safe)
     let warnings = [];
 
     for (const [subject, stats] of Object.entries(currentData)) {
-      // SKIP NEW SEMESTER SUBJECTS that have 0 total classes from old data comparison
       if (stats.total === 0) continue; 
       
       const old = oldData[subject];
@@ -136,7 +132,6 @@ const STUDENT_MODE = false; // Set FALSE for "Professional" (LinkedIn Safe)
       else if (stats.percentage < 78.0) warnings.push(`⚠️ **${subject}**: ${stats.percentageText} (${stats.advice})`);
     }
 
-    // Save State
     if (overallStats) currentData['Total'] = overallStats;
     fs.writeFileSync('data.json', JSON.stringify(currentData, null, 2));
 
