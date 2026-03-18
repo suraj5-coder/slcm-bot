@@ -1,14 +1,15 @@
 const { chromium } = require('playwright');
 const fs = require('fs');
+const { WebhookClient } = require('discord.js');
 
 // --- ⚙️ CONFIGURATION ⚙️ ---
-const STUDENT_MODE = true; 
+const STUDENT_MODE = true; // Set to false if you want "Safety Margin" instead of "Bunkable"
 // ----------------------------
 
 (async () => {
-  let page; // Declared outside so the catch block can access it to take a photo
+  let page; // Declared outside so the catch block can take a picture if it crashes
   try {
-    console.log(`🚀 Starting SLCM Bot (WhatsApp + Visual Debugging)...`);
+    console.log(`🚀 Starting SLCM Bot (Discord + Visual Debugging Mode)...`);
 
     if (!process.env.SLCM_STATE) throw new Error("❌ SLCM_STATE Secret is missing!");
 
@@ -37,7 +38,7 @@ const STUDENT_MODE = true;
     console.log("📍 Looking for Attendance button...");
     const selector = 'div[title="Attendance"]';
     
-    // Extended timeout to 45 seconds in case the portal is just slow today
+    // 45 seconds timeout to give the Salesforce portal extra time
     await page.waitForSelector(selector, { timeout: 45000 });
     await page.click(selector);
     await page.waitForSelector('text=TOTAL CLASSES COMPLETED', { timeout: 45000 });
@@ -71,6 +72,7 @@ const STUDENT_MODE = true;
       let advice = "";
       let stats;
 
+      // Handle New Subjects (0 Classes)
       if (total === 0) {
         advice = "Waiting for first class...";
         stats = { total: 0, attended: 0, percentage: 0, percentageText: '0%', advice };
@@ -78,10 +80,10 @@ const STUDENT_MODE = true;
         if (subject !== 'Total') {
           if (percentage >= 75) {
              const buffer = Math.floor((attended - 0.75 * total) / 0.75);
-             advice = STUDENT_MODE ? `😴 Bunkable: *${buffer}* classes` : `🛡️ Safety Margin: *${buffer}* classes`;
+             advice = STUDENT_MODE ? `😴 Bunkable: **${buffer}** classes` : `🛡️ Safety Margin: **${buffer}** classes`;
           } else {
              const deficit = Math.ceil((0.75 * total - attended) / 0.25);
-             advice = STUDENT_MODE ? `🚑 MUST ATTEND: *${deficit}* next classes!` : `📉 Deficit: Needs *${deficit}* classes.`;
+             advice = STUDENT_MODE ? `🚑 **MUST ATTEND: ${deficit}** next classes!` : `📉 Deficit: Needs **${deficit}** classes.`;
           }
         }
         stats = { total, attended, percentage, percentageText, advice };
@@ -115,35 +117,32 @@ const STUDENT_MODE = true;
       if (old && stats.total > old.total) {
         const statusIcon = stats.attended > old.attended ? "✅" : "❌";
         const statusText = stats.attended > old.attended ? "Present" : "ABSENT";
-        updates.push(`${statusIcon} *${subject}*\n${statusText} (${stats.percentageText}) [${stats.attended}/${stats.total}]\n${stats.advice}`);
+        updates.push(`${statusIcon} **${subject}**\n${statusText} (${stats.percentageText}) [${stats.attended}/${stats.total}]\n${stats.advice}`);
       }
 
-      if (stats.percentage < 75.0) warnings.push(`🛑 *${subject}*: ${stats.percentageText} (${stats.advice})`);
-      else if (stats.percentage < 78.0) warnings.push(`⚠️ *${subject}*: ${stats.percentageText} (${stats.advice})`);
+      if (stats.percentage < 75.0) warnings.push(`🛑 **${subject}**: ${stats.percentageText} (${stats.advice})`);
+      else if (stats.percentage < 78.0) warnings.push(`⚠️ **${subject}**: ${stats.percentageText} (${stats.advice})`);
     }
 
     if (overallStats) currentData['Total'] = overallStats;
     fs.writeFileSync('data.json', JSON.stringify(currentData, null, 2));
 
-    // --- 📱 WHATSAPP NOTIFICATION LOGIC 📱 ---
+    // --- 👾 DISCORD NOTIFICATION LOGIC 👾 ---
     let finalMessage = "";
     if (updates.length > 0) {
-      finalMessage += `*📢 SLCM Update:*\n\n${updates.join('\n\n')}\n\n`;
-      if (overallStats) finalMessage += `📊 *Overall Percentage: ${overallStats.percentageText}*`;
+      finalMessage += `**📢 Daily SLCM Update:**\n\n${updates.join('\n\n')}\n\n`;
+      if (overallStats) finalMessage += `📊 **Overall Percentage: ${overallStats.percentageText}**`;
     } 
 
-    if (warnings.length > 0) finalMessage += `\n\n*⚠️ ALERTS:*\n${warnings.join('\n')}`;
+    if (warnings.length > 0) finalMessage += `\n\n**⚠️ ALERTS:**\n${warnings.join('\n')}`;
 
-    if (finalMessage && process.env.WHATSAPP_PHONE && process.env.WHATSAPP_APIKEY) {
-        finalMessage = finalMessage.replace(/\*\*/g, '*');
-        const phone = process.env.WHATSAPP_PHONE.replace('+', ''); 
-        const apikey = process.env.WHATSAPP_APIKEY;
-        const url = `https://api.callmebot.com/whatsapp.php?phone=${phone}&text=${encodeURIComponent(finalMessage)}&apikey=${apikey}`;
-        
-        console.log("📨 Sending WhatsApp Message...");
-        const response = await fetch(url);
-        if (response.ok) console.log("✅ WhatsApp Notification Sent!");
-        else console.log("❌ Failed to send WhatsApp message.");
+    if (finalMessage && process.env.DISCORD_WEBHOOK) {
+        const webhook = new WebhookClient({ url: process.env.DISCORD_WEBHOOK });
+        console.log("📨 Sending Discord Message...");
+        await webhook.send(finalMessage);
+        console.log("✅ Notification Sent!");
+    } else if (finalMessage) {
+        console.log("⚠️ Changes detected, but DISCORD_WEBHOOK is missing.");
     }
 
     await browser.close();
