@@ -1,79 +1,79 @@
 {
   "Probability and Statistics": {
-    "total": 8,
-    "attended": 8,
+    "total": 10,
+    "attended": 10,
     "percentage": 100,
     "percentageText": "100%",
-    "advice": "🛡️ Safety Margin: **2** classes"
+    "advice": "😴 Bunkable: **3** classes"
   },
   "Chemical Technology for Computing": {
     "total": 11,
     "attended": 11,
     "percentage": 100,
     "percentageText": "100%",
-    "advice": "🛡️ Safety Margin: **3** classes"
+    "advice": "😴 Bunkable: **3** classes"
   },
   "Advanced C Programming with Generative AI": {
     "total": 9,
     "attended": 9,
     "percentage": 100,
     "percentageText": "100%",
-    "advice": "🛡️ Safety Margin: **3** classes"
+    "advice": "😴 Bunkable: **3** classes"
   },
   "Electronics and Digital Logic": {
-    "total": 7,
-    "attended": 7,
+    "total": 8,
+    "attended": 8,
     "percentage": 100,
     "percentageText": "100%",
-    "advice": "🛡️ Safety Margin: **2** classes"
+    "advice": "😴 Bunkable: **2** classes"
   },
   "Python for Data Science": {
-    "total": 5,
-    "attended": 5,
+    "total": 6,
+    "attended": 6,
     "percentage": 100,
     "percentageText": "100%",
-    "advice": "🛡️ Safety Margin: **1** classes"
+    "advice": "😴 Bunkable: **2** classes"
   },
   "Fundamentals and Applications of Civil Engineering": {
-    "total": 6,
-    "attended": 5,
-    "percentage": 83.33,
-    "percentageText": "83.33%",
-    "advice": "🛡️ Safety Margin: **0** classes"
+    "total": 7,
+    "attended": 6,
+    "percentage": 85.71,
+    "percentageText": "85.71%",
+    "advice": "😴 Bunkable: **1** classes"
   },
   "Finance and Management": {
     "total": 1,
     "attended": 0,
     "percentage": 0,
     "percentageText": "0%",
-    "advice": "📉 Deficit: Needs **3** classes."
+    "advice": "🚑 **MUST ATTEND: 3** next classes!"
   },
   "Engineering Exploration": {
-    "total": 2,
-    "attended": 2,
+    "total": 3,
+    "attended": 3,
     "percentage": 100,
     "percentageText": "100%",
-    "advice": "🛡️ Safety Margin: **0** classes"
+    "advice": "😴 Bunkable: **1** classes"
   },
   "Electronics and Digital Logic Lab": {
     "total": 6,
     "attended": 6,
     "percentage": 100,
     "percentageText": "100%",
-    "advice": "🛡️ Safety Margin: **2** classes"
+    "advice": "😴 Bunkable: **2** classes"
   },
   "Python for Data Science Lab": {
-    "total": 4,
-    "attended": 4,
+    "total": 6,
+    "attended": 6,
     "percentage": 100,
     "percentageText": "100%",
-    "advice": "🛡️ Safety Margin: **1** classes"
+    "advice": "😴 Bunkable: **2** classes"
   },
   "Total": {
-    "total": 59,
-    "attended": 57,
-    "percentage": 96.61,
-    "percentageText": "96.61%",
+    "total": 67,
+    "attended": 65,
+    "percentage": 97.01,
+    "percentageText": "97.01%",
     "advice": ""
   }
 }
