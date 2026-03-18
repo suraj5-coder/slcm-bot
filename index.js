@@ -1,28 +1,22 @@
 const { chromium } = require('playwright');
 const fs = require('fs');
-const { WebhookClient } = require('discord.js');
 
 // --- ⚙️ CONFIGURATION ⚙️ ---
-const STUDENT_MODE = false; // Set FALSE for "Professional" (LinkedIn Safe)
+const STUDENT_MODE = true; 
 // ----------------------------
 
 (async () => {
+  let page; // Declared outside so the catch block can access it to take a photo
   try {
-    console.log(`🚀 Starting SLCM Bot (Semester Fix + Bulletproof Cookies)...`);
+    console.log(`🚀 Starting SLCM Bot (WhatsApp + Visual Debugging)...`);
 
     if (!process.env.SLCM_STATE) throw new Error("❌ SLCM_STATE Secret is missing!");
 
     // --- 1. BULLETPROOF COOKIE SANITIZER ---
     let cookies = JSON.parse(process.env.SLCM_STATE);
     cookies = cookies.map(c => {
-      // Playwright STRICTLY requires one of these exact strings (case-sensitive)
       const validSameSite = ['Strict', 'Lax', 'None'];
-      
-      // If the cookie has a weird sameSite value, delete it so Playwright uses the default
-      if (!validSameSite.includes(c.sameSite)) {
-        delete c.sameSite;
-      }
-      
+      if (!validSameSite.includes(c.sameSite)) delete c.sameSite;
       delete c.storeId; 
       delete c.id;
       return c;
@@ -31,9 +25,9 @@ const STUDENT_MODE = false; // Set FALSE for "Professional" (LinkedIn Safe)
     const browser = await chromium.launch({ headless: true });
     const context = await browser.newContext();
     await context.addCookies(cookies);
-    const page = await context.newPage();
+    page = await context.newPage();
 
-    // 2. NAVIGATE & DEBUG
+    // 2. NAVIGATE
     console.log("🔗 Navigating to Dashboard...");
     await page.goto('https://reva-university.my.site.com/StudentPortal/s/', { timeout: 60000 });
     
@@ -42,11 +36,13 @@ const STUDENT_MODE = false; // Set FALSE for "Professional" (LinkedIn Safe)
 
     console.log("📍 Looking for Attendance button...");
     const selector = 'div[title="Attendance"]';
-    await page.waitForSelector(selector, { timeout: 30000 });
+    
+    // Extended timeout to 45 seconds in case the portal is just slow today
+    await page.waitForSelector(selector, { timeout: 45000 });
     await page.click(selector);
-    await page.waitForSelector('text=TOTAL CLASSES COMPLETED', { timeout: 30000 });
+    await page.waitForSelector('text=TOTAL CLASSES COMPLETED', { timeout: 45000 });
 
-    // 3. SCRAPE (Right-to-Left Strategy)
+    // 3. SCRAPE
     const rows = await page.$$('tr'); 
     let currentData = {};
     let overallStats = null;
@@ -75,7 +71,6 @@ const STUDENT_MODE = false; // Set FALSE for "Professional" (LinkedIn Safe)
       let advice = "";
       let stats;
 
-      // --- Handle Subjects with 0 Classes (New Semester Fix) ---
       if (total === 0) {
         advice = "Waiting for first class...";
         stats = { total: 0, attended: 0, percentage: 0, percentageText: '0%', advice };
@@ -83,14 +78,10 @@ const STUDENT_MODE = false; // Set FALSE for "Professional" (LinkedIn Safe)
         if (subject !== 'Total') {
           if (percentage >= 75) {
              const buffer = Math.floor((attended - 0.75 * total) / 0.75);
-             advice = STUDENT_MODE 
-               ? `😴 Bunkable: **${buffer}** classes`
-               : `🛡️ Safety Margin: **${buffer}** classes`;
+             advice = STUDENT_MODE ? `😴 Bunkable: *${buffer}* classes` : `🛡️ Safety Margin: *${buffer}* classes`;
           } else {
              const deficit = Math.ceil((0.75 * total - attended) / 0.25);
-             advice = STUDENT_MODE 
-               ? `🚑 **MUST ATTEND: ${deficit}** next classes!`
-               : `📉 Deficit: Needs **${deficit}** classes.`;
+             advice = STUDENT_MODE ? `🚑 MUST ATTEND: *${deficit}* next classes!` : `📉 Deficit: Needs *${deficit}* classes.`;
           }
         }
         stats = { total, attended, percentage, percentageText, advice };
@@ -106,7 +97,6 @@ const STUDENT_MODE = false; // Set FALSE for "Professional" (LinkedIn Safe)
         let csvLine = `${today},Overall,${overallStats.percentage}\n`;
         if (!fs.existsSync('history.csv')) fs.writeFileSync('history.csv', 'Date,Subject,Percentage\n');
         fs.appendFileSync('history.csv', csvLine);
-        console.log("📂 Data archived to history.csv");
     }
 
     // 5. COMPARE & NOTIFY
@@ -125,27 +115,36 @@ const STUDENT_MODE = false; // Set FALSE for "Professional" (LinkedIn Safe)
       if (old && stats.total > old.total) {
         const statusIcon = stats.attended > old.attended ? "✅" : "❌";
         const statusText = stats.attended > old.attended ? "Present" : "ABSENT";
-        updates.push(`${statusIcon} **${subject}**\n${statusText} (${stats.percentageText}) [${stats.attended}/${stats.total}]\n${stats.advice}`);
+        updates.push(`${statusIcon} *${subject}*\n${statusText} (${stats.percentageText}) [${stats.attended}/${stats.total}]\n${stats.advice}`);
       }
 
-      if (stats.percentage < 75.0) warnings.push(`🛑 **${subject}**: ${stats.percentageText} (${stats.advice})`);
-      else if (stats.percentage < 78.0) warnings.push(`⚠️ **${subject}**: ${stats.percentageText} (${stats.advice})`);
+      if (stats.percentage < 75.0) warnings.push(`🛑 *${subject}*: ${stats.percentageText} (${stats.advice})`);
+      else if (stats.percentage < 78.0) warnings.push(`⚠️ *${subject}*: ${stats.percentageText} (${stats.advice})`);
     }
 
     if (overallStats) currentData['Total'] = overallStats;
     fs.writeFileSync('data.json', JSON.stringify(currentData, null, 2));
 
-    const webhook = new WebhookClient({ url: process.env.DISCORD_WEBHOOK });
-
+    // --- 📱 WHATSAPP NOTIFICATION LOGIC 📱 ---
     let finalMessage = "";
     if (updates.length > 0) {
-      finalMessage += `**📢 SLCM Update:**\n\n${updates.join('\n\n')}\n\n`;
-      if (overallStats) finalMessage += `📊 **Overall: ${overallStats.percentageText}**`;
+      finalMessage += `*📢 SLCM Update:*\n\n${updates.join('\n\n')}\n\n`;
+      if (overallStats) finalMessage += `📊 *Overall Percentage: ${overallStats.percentageText}*`;
     } 
 
-    if (warnings.length > 0) finalMessage += `\n\n**⚠️ ALERTS:**\n${warnings.join('\n')}`;
+    if (warnings.length > 0) finalMessage += `\n\n*⚠️ ALERTS:*\n${warnings.join('\n')}`;
 
-    if (finalMessage) await webhook.send(finalMessage);
+    if (finalMessage && process.env.WHATSAPP_PHONE && process.env.WHATSAPP_APIKEY) {
+        finalMessage = finalMessage.replace(/\*\*/g, '*');
+        const phone = process.env.WHATSAPP_PHONE.replace('+', ''); 
+        const apikey = process.env.WHATSAPP_APIKEY;
+        const url = `https://api.callmebot.com/whatsapp.php?phone=${phone}&text=${encodeURIComponent(finalMessage)}&apikey=${apikey}`;
+        
+        console.log("📨 Sending WhatsApp Message...");
+        const response = await fetch(url);
+        if (response.ok) console.log("✅ WhatsApp Notification Sent!");
+        else console.log("❌ Failed to send WhatsApp message.");
+    }
 
     await browser.close();
     console.log("🎉 Done!");
@@ -153,6 +152,13 @@ const STUDENT_MODE = false; // Set FALSE for "Professional" (LinkedIn Safe)
   } catch (error) {
     console.error("\n💥 FATAL ERROR 💥");
     console.error(error.message);
+    
+    // --- 📸 TAKE A PICTURE OF THE CRASH ---
+    if (page) {
+        console.log("📸 Taking a screenshot of the error...");
+        await page.screenshot({ path: 'error.png', fullPage: true });
+    }
+    
     process.exit(1);
   }
 })();
