@@ -1,17 +1,17 @@
 {
   "Probability and Statistics": {
-    "total": 11,
+    "total": 12,
     "attended": 11,
-    "percentage": 100,
-    "percentageText": "100%",
-    "advice": "😴 Bunkable: **3** classes"
+    "percentage": 91.67,
+    "percentageText": "91.67%",
+    "advice": "😴 Bunkable: **2** classes"
   },
   "Chemical Technology for Computing": {
-    "total": 11,
-    "attended": 11,
+    "total": 12,
+    "attended": 12,
     "percentage": 100,
     "percentageText": "100%",
-    "advice": "😴 Bunkable: **3** classes"
+    "advice": "😴 Bunkable: **4** classes"
   },
   "Advanced C Programming with Generative AI": {
     "total": 12,
@@ -28,18 +28,18 @@
     "advice": "😴 Bunkable: **2** classes"
   },
   "Python for Data Science": {
-    "total": 6,
+    "total": 7,
     "attended": 6,
-    "percentage": 100,
-    "percentageText": "100%",
-    "advice": "😴 Bunkable: **2** classes"
+    "percentage": 85.71,
+    "percentageText": "85.71%",
+    "advice": "😴 Bunkable: **1** classes"
   },
   "Fundamentals and Applications of Civil Engineering": {
-    "total": 8,
+    "total": 9,
     "attended": 7,
-    "percentage": 87.5,
-    "percentageText": "87.5%",
-    "advice": "😴 Bunkable: **1** classes"
+    "percentage": 77.78,
+    "percentageText": "77.78%",
+    "advice": "😴 Bunkable: **0** classes"
   },
   "Finance and Management": {
     "total": 1,
@@ -63,17 +63,17 @@
     "advice": "😴 Bunkable: **2** classes"
   },
   "Python for Data Science Lab": {
-    "total": 6,
-    "attended": 6,
+    "total": 8,
+    "attended": 8,
     "percentage": 100,
     "percentageText": "100%",
     "advice": "😴 Bunkable: **2** classes"
   },
   "Total": {
-    "total": 72,
-    "attended": 70,
-    "percentage": 97.22,
-    "percentageText": "97.22%",
+    "total": 78,
+    "attended": 73,
+    "percentage": 93.59,
+    "percentageText": "93.59%",
     "advice": ""
   }
 }
