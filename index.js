@@ -7,7 +7,7 @@ const STUDENT_MODE = true; // Set to false if you want "Safety Margin" instead o
 // ----------------------------
 
 (async () => {
-  let page; // Declared outside so the catch block can take a picture if it crashes
+  let page; 
   try {
     console.log(`🚀 Starting SLCM Bot (Discord + Visual Debugging Mode)...`);
 
@@ -38,12 +38,12 @@ const STUDENT_MODE = true; // Set to false if you want "Safety Margin" instead o
     console.log("📍 Looking for Attendance button...");
     const selector = 'div[title="Attendance"]';
     
-    // 45 seconds timeout to give the Salesforce portal extra time
     await page.waitForSelector(selector, { timeout: 45000 });
     await page.click(selector);
     await page.waitForSelector('text=TOTAL CLASSES COMPLETED', { timeout: 45000 });
 
     // 3. SCRAPE
+    console.log("📝 Scraping attendance data...");
     const rows = await page.$$('tr'); 
     let currentData = {};
     let overallStats = null;
@@ -72,7 +72,6 @@ const STUDENT_MODE = true; // Set to false if you want "Safety Margin" instead o
       let advice = "";
       let stats;
 
-      // Handle New Subjects (0 Classes)
       if (total === 0) {
         advice = "Waiting for first class...";
         stats = { total: 0, attended: 0, percentage: 0, percentageText: '0%', advice };
@@ -101,10 +100,17 @@ const STUDENT_MODE = true; // Set to false if you want "Safety Margin" instead o
         fs.appendFileSync('history.csv', csvLine);
     }
 
-    // 5. COMPARE & NOTIFY
+    // 5. COMPARE & NOTIFY (FIXED EMPTY JSON BUG)
     let oldData = {};
     if (fs.existsSync('data.json')) {
-      oldData = JSON.parse(fs.readFileSync('data.json', 'utf8'));
+      const rawData = fs.readFileSync('data.json', 'utf8');
+      if (rawData.trim() !== '') {
+          try {
+              oldData = JSON.parse(rawData);
+          } catch (e) {
+              console.log("⚠️ data.json was empty or invalid. Starting fresh!");
+          }
+      }
     }
 
     let updates = [];
@@ -114,6 +120,8 @@ const STUDENT_MODE = true; // Set to false if you want "Safety Margin" instead o
       if (stats.total === 0) continue; 
       
       const old = oldData[subject];
+      // If it's a completely new subject (oldData is empty), we can optionally alert it as "New" 
+      // but for standard behavior, we only alert if total classes INCREASED.
       if (old && stats.total > old.total) {
         const statusIcon = stats.attended > old.attended ? "✅" : "❌";
         const statusText = stats.attended > old.attended ? "Present" : "ABSENT";
@@ -143,6 +151,8 @@ const STUDENT_MODE = true; // Set to false if you want "Safety Margin" instead o
         console.log("✅ Notification Sent!");
     } else if (finalMessage) {
         console.log("⚠️ Changes detected, but DISCORD_WEBHOOK is missing.");
+    } else {
+        console.log("👍 No changes detected today.");
     }
 
     await browser.close();
