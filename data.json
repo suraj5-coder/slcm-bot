@@ -1,1 +1,93 @@
-
+{
+  "Discrete Mathematics and Graph Theory": {
+    "total": 8,
+    "attended": 7,
+    "percentage": 87.5,
+    "percentageText": "87.5%",
+    "advice": "😴 Bunkable: **1** classes"
+  },
+  "Data Structures": {
+    "total": 11,
+    "attended": 11,
+    "percentage": 100,
+    "percentageText": "100%",
+    "advice": "😴 Bunkable: **3** classes"
+  },
+  "Database Management System": {
+    "total": 7,
+    "attended": 7,
+    "percentage": 100,
+    "percentageText": "100%",
+    "advice": "😴 Bunkable: **2** classes"
+  },
+  "Object Oriented Programming Using C++": {
+    "total": 7,
+    "attended": 7,
+    "percentage": 100,
+    "percentageText": "100%",
+    "advice": "😴 Bunkable: **2** classes"
+  },
+  "Computer Organization and Architecture": {
+    "total": 6,
+    "attended": 6,
+    "percentage": 100,
+    "percentageText": "100%",
+    "advice": "😴 Bunkable: **2** classes"
+  },
+  "Web Application Development": {
+    "total": 10,
+    "attended": 10,
+    "percentage": 100,
+    "percentageText": "100%",
+    "advice": "😴 Bunkable: **3** classes"
+  },
+  "Professional Ethics": {
+    "total": 2,
+    "attended": 2,
+    "percentage": 100,
+    "percentageText": "100%",
+    "advice": "😴 Bunkable: **0** classes"
+  },
+  "Universal Human Values": {
+    "total": 1,
+    "attended": 1,
+    "percentage": 100,
+    "percentageText": "100%",
+    "advice": "😴 Bunkable: **0** classes"
+  },
+  "Environmental Science": {
+    "total": 2,
+    "attended": 2,
+    "percentage": 100,
+    "percentageText": "100%",
+    "advice": "😴 Bunkable: **0** classes"
+  },
+  "Data Structures and Algorithms (Integrated Lab)": {
+    "total": 2,
+    "attended": 2,
+    "percentage": 100,
+    "percentageText": "100%",
+    "advice": "😴 Bunkable: **0** classes"
+  },
+  "Database Management Systems (Integrated Lab)": {
+    "total": 6,
+    "attended": 6,
+    "percentage": 100,
+    "percentageText": "100%",
+    "advice": "😴 Bunkable: **2** classes"
+  },
+  "Object Oriented Programming Using C++ (Integrated Lab)": {
+    "total": 4,
+    "attended": 4,
+    "percentage": 100,
+    "percentageText": "100%",
+    "advice": "😴 Bunkable: **1** classes"
+  },
+  "Total": {
+    "total": 66,
+    "attended": 65,
+    "percentage": 98.48,
+    "percentageText": "98.48%",
+    "advice": ""
+  }
+}
